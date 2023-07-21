@@ -1,0 +1,252 @@
+/* This Code is only embedded with Original Vdieo, The hearing effects buttons are not functioning.*/
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Hearing loss simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            overflow: hidden;
+            /*background-color: #000; /* 添加黑色背景 */
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .button-wrapper {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            background-color: #333;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+
+        .info-display {
+            position: fixed;
+            right: 10px;
+            font-size: 1.2em;
+        }
+
+        #soundSourcePosition {
+            top: 190px;
+        }
+
+        #cameraDirection {
+            top: 490px;
+            right: 55px
+        }
+
+        video {
+            /*transform: scaleX(-1);
+            /* 水平翻转 */
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Hearing loss simulation</h1>
+
+    <div class="button-wrapper">
+        <button class="button play-video" onclick="playVideo()">Play Video</button>
+        <button class="button reset-camera" onclick="resetCameraPosition()">Reset Camera</button>
+        <button class="button hearing-loss-mild" onclick="simulateHearingLoss('mild')">Simulate Mild Hearing
+            Loss</button>
+        <button class="button hearing-loss-moderate" onclick="simulateHearingLoss('moderate')">Simulate Moderate Hearing
+            Loss</button>
+        <button class="button hearing-loss-severe" onclick="simulateHearingLoss('severe')">Simulate Severe Hearing
+            Loss</button>
+        <button class="button hearing-aid-low" onclick="simulateHearingAid('mild')">Simulate Low Level Hearing
+            Aid</button>
+        <button class="button hearing-aid-medium" onclick="simulateHearingAid('moderate')">Simulate Medium Level Hearing
+            Aid</button>
+        <button class="button hearing-aid-high" onclick="simulateHearingAid('severe')">Simulate High Level Hearing
+            Aid</button>
+    </div>
+    <div id="cameraDirection" class="info-display"></div>
+    <div id="soundSourcePosition" class="info-display"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // create a scene
+        const scene = new THREE.Scene();
+
+        // create a perspective camera
+        const width = 960;
+        const height = 540;
+        const camera = new THREE.PerspectiveCamera(75, width / height, 1, 100);
+
+        // Set the initial camera position
+        camera.position.set(0, 0, 0);
+        camera.lookAt(new THREE.Vector3(-0.01, -0.99, -0.01));
+
+        // create a renderer
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(width, height);
+
+        // display the renderer
+        document.body.appendChild(renderer.domElement);
+
+        // create a sphere geometry
+        const geometry = new THREE.SphereGeometry(15, 32, 16);
+
+        // create a VideoTexture
+        const videoElement = document.createElement('video');
+        videoElement.src = "Demo_DONE1_1.mp4";
+        videoElement.loop = true;
+        videoElement.muted = false;
+        videoElement.playsInline = true;
+        videoElement.crossOrigin = "anonymous";
+        videoElement.play();
+        const texture = new THREE.VideoTexture(videoElement);
+        texture.flipY = false; // Flip the video vertically
+        //texture.flipX = false; // Flip the video vertically
+
+        // create a material from the texture
+        const material = new THREE.MeshBasicMaterial({ map: texture });
+        material.side = THREE.BackSide;
+        material.map.flipY = false; // 翻转视频
+        // create a mesh and add to the scene
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        renderer.setAnimationLoop(() => renderer.render(scene, camera));
+
+        // update camera direction display
+        // update camera direction display
+        function updateCameraDirectionDisplay() {
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+
+            const x = Math.round(direction.x * 10);
+            const y = Math.round(direction.y * 10);
+            const z = Math.round(direction.z * 10);
+
+            const xDegrees = -(Math.atan2(z, x) * 180) / Math.PI;
+            const yDegrees = (Math.atan2(Math.sqrt(x * x + z * z), y) * 180) / Math.PI;
+            const zDegrees = (Math.atan2(y, x) * 180) / Math.PI;
+
+            document.getElementById('cameraDirection').innerHTML = `Camera Direction:<br>X: ${xDegrees.toFixed(2)}°<br>Y: ${yDegrees.toFixed(2)}°<br>Z: ${zDegrees.toFixed(2)}°`;
+        }
+
+        // zoom in / out
+        const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
+        renderer.domElement.addEventListener('wheel', e => {
+            camera.fov = clamp(camera.fov + e.deltaY / 10, 10, 120);
+            camera.updateProjectionMatrix();
+            updateCameraDirectionDisplay();
+        });
+
+        // rotate camera
+        let mouseDown = false;
+        let rotationAxis;
+
+        renderer.domElement.addEventListener('mousedown', e => {
+            if (e.button === 0) {
+                mouseDown = true;
+                rotationAxis = null; // Reset the rotation axis
+            }
+        });
+
+
+        window.addEventListener('mouseup', e => {
+            if (e.button === 0) mouseDown = false;
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (!mouseDown) return;
+
+            const { movementX, movementY } = e;
+
+            // Determine the rotation axis if not already set
+            if (rotationAxis === null) {
+                rotationAxis = Math.abs(movementX) > Math.abs(movementY) ? 'horizontal' : 'vertical';
+            }
+
+            if (rotationAxis === 'horizontal') {
+                const rotateY = movementX / 100;
+                camera.rotateY(rotateY);
+            } else if (rotationAxis === 'vertical') {
+                const rotateX = movementY / 100;
+                camera.rotateX(rotateX);
+            }
+
+            updateCameraDirectionDisplay();
+        });
+
+
+
+        // Add sound source indicator
+        const soundSourceGeometry = new THREE.SphereGeometry(05, 32, 32);
+        const soundSourceMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green color
+        const soundSourceIndicator = new THREE.Mesh(soundSourceGeometry, soundSourceMaterial);
+        soundSourceIndicator.position.set(0.87, 0.14, 0.47);
+        //scene.add(soundSourceIndicator);// Comment out this line to hide the green sphere
+
+        // Add second sound source indicator
+        const soundSourceGeometry2 = new THREE.SphereGeometry(0.5, 32, 32);
+        const soundSourceMaterial2 = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red color
+        const soundSourceIndicator2 = new THREE.Mesh(soundSourceGeometry2, soundSourceMaterial2);
+        soundSourceIndicator2.position.set(0.8, 0, -0.8);
+        // scene.add(soundSourceIndicator2);// Comment out this line to hide the red sphere
+
+        // Update sound source position display
+        function updateSoundSourcePositionDisplay() {
+            const x1 = Math.round(soundSourceIndicator.position.x * 10);
+            const y1 = Math.round(soundSourceIndicator.position.y * 10);
+            const z1 = Math.round(soundSourceIndicator.position.z * 10);
+
+            const x1Degrees = (Math.atan2(z1, x1) * 180) / Math.PI;
+            const y1Degrees = (Math.atan2(Math.sqrt(x1 * x1 + z1 * z1), y1) * 180) / Math.PI;
+            const z1Degrees = (Math.atan2(y1, x1) * 180) / Math.PI;
+
+            const x2 = Math.round(soundSourceIndicator2.position.x * 10);
+            const y2 = Math.round(soundSourceIndicator2.position.y * 10);
+            const z2 = Math.round(soundSourceIndicator2.position.z * 10);
+
+            const x2Degrees = (Math.atan2(z2, x2) * 180) / Math.PI;
+            const y2Degrees = (Math.atan2(Math.sqrt(x2 * x2 + z2 * z2), y2) * 180) / Math.PI;
+            const z2Degrees = (Math.atan2(y2, x2) * 180) / Math.PI;
+
+            document.getElementById('soundSourcePosition').innerHTML = `
+        Sound Source 1 Position:<br>X: ${x1Degrees.toFixed(2)}°<br>Y: ${y1Degrees.toFixed(2)}°<br>Z: ${z1Degrees.toFixed(2)}°<br>
+        Sound Source 2 Position:<br>X: ${x2Degrees.toFixed(2)}°<br>Y: ${y2Degrees.toFixed(2)}°<br>Z: ${z2Degrees.toFixed(2)}°
+    `;
+        }
+
+        // Initialize camera direction and sound source position display
+        updateCameraDirectionDisplay();
+        updateSoundSourcePositionDisplay();
+
+
+        // Add the event listener to the play-video button
+        document.querySelector(".play-video").addEventListener("click", playVideo);
+        function resetCameraPosition() {
+            camera.position.set(0, 0, 0);
+            camera.lookAt(new THREE.Vector3(-0.01, -0.99, -0.01));
+            updateCameraDirectionDisplay();
+        }
+        
+        function playVideo() {
+            videoElement.play();
+        }
+
+    </script>
+</body>
+
+</html>
